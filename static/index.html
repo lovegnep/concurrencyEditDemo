@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script type="text/javascript" src="client-side.js"></script>
+    <script type="text/javascript" src="socket.io.js"></script>
+    <script type="text/javascript" src="diff_match_patch.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <style>
+        html{
+            width:100%;
+            height:100%;
+        }
+        body{
+            width:100%;
+            height:100%;
+        }
+        #main{
+            width:100%;
+            height:100%;
+        }
+        #contain{
+            height:100%;
+            width:100%;
+            background-color: aliceblue;
+            position: relative;
+        }
+        #contain textarea{
+            display: none;
+        }
+        #text{
+            width:50%;
+            height:50%;
+            position: absolute;
+            top:20%;
+            left:20%
+        }
+        #control{
+            position: absolute;
+            left:45%;
+            top:50%;
+        }
+    </style>
+</head>
+<body>
+<div id="main">
+    <div id="contain">
+        <textarea id="text">
+
+        </textarea>
+        <div id="control">
+            <input id="input">
+            <button id="register">注册</button>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    var Changeset = changesets.Changeset;
+    function computeChanges(text1,text2){
+        var engine = new diff_match_patch;
+        var diff = engine.diff_main(text1,text2);
+        return Changeset.fromDiff(diff);
+    }
+
+</script>
+<script  type="text/javascript">
+    var textContent = "";
+    var socket = io();
+    socket.on('invlaidName',function(data){
+        console.log('昵称非法');
+    })
+    socket.on('registerSuccess',function (data) {
+        console.log('注册成功');
+        socket.emit('get');
+    })
+    socket.on('initget',function (data) {
+        console.log('get event initget:',data);
+        textContent = data;
+        $('#control').css('display','none');
+        $('#text').css('display','block');
+        $('#text').val(textContent);
+    })
+    socket.on('pull',function(data1,data2){
+        console.log('get event pull:',data1,data2);
+        var diff = Changeset.unpack(data2);
+        textContent = diff.apply(textContent);
+        $('#text').val(textContent)
+
+    })
+    var doc = document.getElementById("text");
+    doc.addEventListener('input',function(){
+        var content = this.value;
+
+        console.log(content);
+        var change = computeChanges(textContent,content);
+        textContent = content;
+        socket.emit('push',change.pack())
+    })
+    $('#register').on('click',function () {
+        var name = $('#input').val();
+        console.log(name);
+        socket.emit('register',name);
+    })
+</script>
+</body>
+</html>
